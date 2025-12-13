@@ -141,7 +141,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     youtubeMirror: false, // Mirror video horizontally
     youtubeMotionInvert: true, // Invert Parallax Motion for YouTube Only
     youtubeX: 0.0,
-    youtubeY: 0.0,
+    youtubeY: -14.6,
     youtubeZ: -100.0,
     youtubeScale: 0.1, // Default Scale
 
