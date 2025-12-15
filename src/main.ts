@@ -15,9 +15,14 @@ const PRESET_MODELS: { [key: string]: string } = {
 };
 
 // プリセットダンス一覧 (public/dances/ 内のファイル)
-const PRESET_DANCES: { [key: string]: string } = {
-  'なし': '',
-  '美少女無罪♡パイレーツ': '/dances/美少女無罪♡パイレーツモーション.vmd',
+// vmd: VMDファイルパス, youtube: 関連するYouTube動画ID（空欄で現在の設定を維持）
+interface DancePreset {
+  vmd: string;
+  youtube?: string;
+}
+const PRESET_DANCES: { [key: string]: DancePreset } = {
+  'なし': { vmd: '' },
+  '美少女無罪♡パイレーツ': { vmd: '/dances/美少女無罪♡パイレーツモーション.vmd', youtube: 'KfZR9jVP6tw' },
 };
 
 // Helper function to determine model type from file extension
@@ -138,7 +143,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const danceState = { selected: 'なし' };
 
   // Helper function to load VMD based on model type
-  function loadDance(url: string) {
+  function loadDance(url: string, youtubeId?: string) {
     const modelType = scene.getModelType();
     console.log("Loading VMD for model type:", modelType);
     if (modelType === 'pmx') {
@@ -147,13 +152,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       scene.loadVMD(url);
     } else {
       alert("先にモデルを読み込んでください");
+      return;
+    }
+
+    // YouTube連動: ダンスにYouTube IDが設定されていれば自動再生
+    if (youtubeId) {
+      scene.config.youtubeId = youtubeId;
+      scene.toggleYoutube(true);
+      updateControllers();
     }
   }
 
   danceFolder.add(danceState, 'selected', Object.keys(PRESET_DANCES)).name('プリセット').onChange((name: string) => {
-    const url = PRESET_DANCES[name];
-    if (url) {
-      loadDance(url);
+    const preset = PRESET_DANCES[name];
+    if (preset && preset.vmd) {
+      loadDance(preset.vmd, preset.youtube);
     }
   });
 
@@ -305,6 +318,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   sceneFolder.add(scene.config, 'youtubeId').name('YouTube ID').onFinishChange((id: string) => scene.updateYoutubeVideo(id));
   sceneFolder.add(scene.config, 'youtubeMirror').name('YouTube反転 (画) (Mirror)').onChange(() => scene.updateYoutubeVideo(scene.config.youtubeId));
   sceneFolder.add(scene.config, 'youtubeMotionInvert').name('YouTube反転 (動) (Motion)');
+  sceneFolder.add(scene.config, 'youtubeVolume', 0, 100).name('YouTube音量').onChange((v: number) => scene.setYoutubeVolume(v));
 
   // Side Wall Color
   sceneFolder.addColor(scene.config, 'sideWallColor').name('横壁の色 (輝き)').onChange((c: string) => {

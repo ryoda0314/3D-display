@@ -61,6 +61,7 @@ export class SceneController {
     private cssScene: THREE.Scene;
     private cssRenderer: CSS3DRenderer;
     private youtubeObject: CSS3DObject | null = null; // Store reference
+    private youtubePlayer: any = null; // YouTube IFrame API player
 
     public sideWallMat: THREE.MeshBasicMaterial | null = null;
     public topWallMat: THREE.MeshBasicMaterial | null = null; // New Top Material
@@ -185,10 +186,9 @@ export class SceneController {
         // Helper to place grids (Removed unused addGrid)
 
         // Floor (Bottom)
-        const floorGrid = new THREE.GridHelper(boxSize, divisions, 0x888888, 0x444444); // User said White.
-        floorGrid.material.color.setHex(0xffffff);
-        floorGrid.material.opacity = 0.3; // Make it subtle ("faintly bright"?)
-        floorGrid.material.transparent = true;
+        const floorGrid = new THREE.GridHelper(boxSize, divisions, 0xffffff, 0xffffff);
+        floorGrid.material.opacity = 1.0; // Fully visible
+        floorGrid.material.transparent = false;
         floorGrid.position.set(0, -boxSize / 2 + 0.01, -boxDepth / 2);
         this.scene.add(floorGrid);
 
@@ -212,7 +212,7 @@ export class SceneController {
         const leftGrid = new THREE.GridHelper(boxDepth, divisions, 0xffffff, 0xffffff);
         leftGrid.rotation.z = Math.PI / 2;
         leftGrid.position.set(-boxSize / 2 + 0.01, 0, -boxDepth / 2);
-        leftGrid.material.opacity = 0.3;
+        leftGrid.material.opacity = 0.7; // More visible
         leftGrid.material.transparent = true;
         this.scene.add(leftGrid);
 
@@ -839,6 +839,7 @@ export class SceneController {
     public updateYoutubeVideo(id: string) {
         this.config.youtubeId = id;
         this.cssScene.clear();
+        this.youtubePlayer = null;
 
         const width = 1000;
         const height = 1000;
@@ -848,12 +849,13 @@ export class SceneController {
         div.style.height = `${height}px`;
         div.style.backgroundColor = '#000';
 
-        const iframe = document.createElement('iframe');
-        iframe.style.width = '100%';
-        iframe.style.height = '100%';
-        iframe.style.border = '0';
-        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}`;
-        div.appendChild(iframe);
+        // Create a unique ID for the player div
+        const playerId = `youtube-player-${Date.now()}`;
+        const playerDiv = document.createElement('div');
+        playerDiv.id = playerId;
+        playerDiv.style.width = '100%';
+        playerDiv.style.height = '100%';
+        div.appendChild(playerDiv);
 
         const videoObject = new CSS3DObject(div);
         videoObject.position.set(0, 0, -20); // Back Wall Z
@@ -864,7 +866,50 @@ export class SceneController {
         videoObject.rotation.y = Math.PI;
 
         this.cssScene.add(videoObject);
-        this.youtubeObject = videoObject; // Save reference
+        this.youtubeObject = videoObject;
+
+        // Initialize YouTube IFrame API
+        const self = this;
+
+        // Load YouTube API if not already loaded
+        if (!(window as any).YT) {
+            const tag = document.createElement('script');
+            tag.src = 'https://www.youtube.com/iframe_api';
+            document.head.appendChild(tag);
+
+            (window as any).onYouTubeIframeAPIReady = () => {
+                self.createYoutubePlayer(playerId, id);
+            };
+        } else {
+            this.createYoutubePlayer(playerId, id);
+        }
+    }
+
+    private createYoutubePlayer(elementId: string, videoId: string) {
+        const self = this;
+        this.youtubePlayer = new (window as any).YT.Player(elementId, {
+            videoId: videoId,
+            playerVars: {
+                autoplay: 1,
+                loop: 1,
+                playlist: videoId,
+                controls: 0,
+                showinfo: 0,
+                modestbranding: 1
+            },
+            events: {
+                onReady: (event: any) => {
+                    event.target.setVolume(self.config.youtubeVolume);
+                }
+            }
+        });
+    }
+
+    public setYoutubeVolume(volume: number) {
+        this.config.youtubeVolume = volume;
+        if (this.youtubePlayer && this.youtubePlayer.setVolume) {
+            this.youtubePlayer.setVolume(volume);
+        }
     }
 
     public toggleDepthObjects(visible: boolean) {

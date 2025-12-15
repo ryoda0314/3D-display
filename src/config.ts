@@ -59,6 +59,7 @@ export interface AppConfig {
     youtubeY: number;
     youtubeZ: number;
     youtubeScale: number;
+    youtubeVolume: number; // 0-100
     backWallColor: string;
 
     // Hand Tuning
@@ -93,7 +94,7 @@ export const PC_DEFAULT_CONFIG: AppConfig = {
     debugView: false,
 
     // Avatar Config - PC
-    avatarScale: 9.0,
+    avatarScale: 7.0,
     avatarScaleX: 0.5785,
     avatarScaleY: 1.0,
     avatarScaleZ: 0.5785,
@@ -134,6 +135,7 @@ export const PC_DEFAULT_CONFIG: AppConfig = {
     youtubeY: -14.6,
     youtubeZ: -100.0,
     youtubeScale: 0.1,
+    youtubeVolume: 10, // 0-100
     backWallColor: '#222222',
 
     // Hand Tuning
@@ -168,7 +170,7 @@ export const MOBILE_DEFAULT_CONFIG: AppConfig = {
     debugView: false,
 
     // Avatar Config - Mobile (縦画面向け調整)
-    avatarScale: 9.0,
+    avatarScale: 7.0,
     avatarScaleX: 0.5785,
     avatarScaleY: 1.0,
     avatarScaleZ: 0.5785,
@@ -209,6 +211,7 @@ export const MOBILE_DEFAULT_CONFIG: AppConfig = {
     youtubeY: -10.0,  // スマホ用位置調整
     youtubeZ: -80.0,
     youtubeScale: 0.08,
+    youtubeVolume: 10, // 0-100
     backWallColor: '#fbd8fdff',
 
     // Hand Tuning
