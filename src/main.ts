@@ -61,6 +61,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
+  // ===== 全画面モード機能 =====
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.log(`Fullscreen error: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
+  // スマホ用 全画面ボタンを作成
+  const fullscreenBtn = document.createElement('button');
+  fullscreenBtn.textContent = '⛶';
+  fullscreenBtn.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    font-size: 24px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.8);
+    color: #333;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    display: none;
+  `;
+  fullscreenBtn.onclick = toggleFullscreen;
+  document.body.appendChild(fullscreenBtn);
+
+  // モバイルデバイス検出して全画面ボタンを表示
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (isMobile) {
+    fullscreenBtn.style.display = 'block';
+  }
+
+  // 全画面状態が変わったらボタンのテキストを更新
+  document.addEventListener('fullscreenchange', () => {
+    fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
+  });
+
   // ===== 1. モデル選択 (第一階層) =====
   const modelFolder = gui.addFolder('モデル選択');
   const modelState = { selected: 'なし' };
@@ -330,9 +374,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   tuneFolder.add({ decrease: () => applyStep(-1) }, 'decrease').name('[-] 減らす');
   tuneFolder.add({ increase: () => applyStep(1) }, 'increase').name('[+] 増やす');
 
-  // NOTE: 'utils' object and 'toggleFullscreen' function are not defined in the provided context.
-  // This line might cause a runtime error if 'utils' is not defined elsewhere.
-  // gui.add(utils, 'toggleFullscreen').name('全画面表示切替 [F11]');
+  // 全画面ボタンをGUIに追加
+  gui.add({ toggleFullscreen }, 'toggleFullscreen').name('全画面表示切替');
   gui.add(resetCalls, 'saveDefaults').name('現在の値を初期値にする');
   gui.add(resetCalls, 'reset').name('設定をリセット');
   const tracker = new HeadTracker();

@@ -627,13 +627,30 @@ export class SceneController {
     }
 
     public updateAvatar(delta: number) {
+        // Calculate aspect ratio adjustment
+        const screenAspect = window.innerWidth / window.innerHeight;
+        // Base aspect ratio (reference: 16:9 = 1.78)
+        const baseAspect = 16 / 9;
+
+        // Adjust scale based on aspect ratio
+        let aspectScaleX = 1.0;
+        let aspectScaleY = 1.0;
+
+        if (screenAspect < baseAspect) {
+            // Taller screen (e.g., phone portrait) - increase X to compensate
+            aspectScaleX = baseAspect / screenAspect;
+        } else if (screenAspect > baseAspect) {
+            // Wider screen (e.g., ultra-wide) - increase Y to compensate
+            aspectScaleY = screenAspect / baseAspect;
+        }
+
         // Update PMX model
         if (this.modelType === 'pmx' && this.currentPmxMesh) {
             const s = this.config.avatarScale * 0.1; // PMX scale factor
             this.currentPmxMesh.scale.set(
-                s * this.config.avatarScaleX,
-                s * this.config.avatarScaleY,
-                s * this.config.avatarScaleZ
+                s * this.config.avatarScaleX * aspectScaleX,
+                s * this.config.avatarScaleY * aspectScaleY,
+                s * this.config.avatarScaleZ * aspectScaleX  // Z follows X for proportional depth
             );
             this.currentPmxMesh.position.y = this.config.avatarY;
             this.currentPmxMesh.position.z = this.config.avatarZ;
@@ -656,9 +673,9 @@ export class SceneController {
         // Apply Base Transform (Scale & Position) - ALWAYS run this
         const s = this.config.avatarScale;
         this.currentVrm.scene.scale.set(
-            s * this.config.avatarScaleX,
-            s * this.config.avatarScaleY,
-            s * this.config.avatarScaleZ
+            s * this.config.avatarScaleX * aspectScaleX,
+            s * this.config.avatarScaleY * aspectScaleY,
+            s * this.config.avatarScaleZ * aspectScaleX  // Z follows X for proportional depth
         );
         this.currentVrm.scene.position.y = this.config.avatarY;
         this.currentVrm.scene.position.z = this.config.avatarZ;
