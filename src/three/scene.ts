@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+// @ts-ignore - MMDLoader has no type declaration
+import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader.js';
+// @ts-ignore - MMDAnimationHelper has no type declaration
+import { MMDAnimationHelper } from 'three/examples/jsm/animation/MMDAnimationHelper.js';
 import { DEFAULT_CONFIG, type AppConfig } from '../config';
 
 import { VRM, VRMLoaderPlugin, VRMUtils, VRMHumanBoneName } from '@pixiv/three-vrm';
@@ -60,7 +64,14 @@ export class SceneController {
 
     public sideWallMat: THREE.MeshBasicMaterial | null = null;
     public topWallMat: THREE.MeshBasicMaterial | null = null; // New Top Material
-    // private boxMesh: THREE.Mesh | null = null; // Removed unused property
+    public backWallMat: THREE.MeshBasicMaterial | null = null; // Back Wall Material
+    private backWallMesh: THREE.Mesh | null = null; // Back Wall Mesh
+
+    // PMX/MMD Support
+    private mmdLoader: any;
+    private mmdHelper: any;
+    private currentPmxMesh: THREE.SkinnedMesh | null = null;
+    private modelType: 'vrm' | 'pmx' | null = null;
 
     constructor(container: HTMLElement) {
         // 1. Scene
@@ -146,9 +157,25 @@ export class SceneController {
         cube.position.z = -10;
 
         this.scene.add(cube);
-        // this.boxMesh = cube; // Store reference
 
-        this.updateYoutubeVideo(this.config.youtubeId); // Init video
+        // Back Wall (for when YouTube is disabled)
+        const backWallMat = new THREE.MeshBasicMaterial({
+            color: this.config.backWallColor,
+            side: THREE.FrontSide
+        });
+        this.backWallMat = backWallMat;
+
+        const backWallGeo = new THREE.PlaneGeometry(boxSize, boxSize);
+        const backWall = new THREE.Mesh(backWallGeo, backWallMat);
+        backWall.position.z = -boxDepth;
+        backWall.visible = !this.config.youtubeEnabled; // Hidden if YouTube is on
+        this.backWallMesh = backWall;
+        this.scene.add(backWall);
+
+        // Init YouTube or hide based on config
+        if (this.config.youtubeEnabled) {
+            this.updateYoutubeVideo(this.config.youtubeId);
+        }
 
         // --- Grids on Walls ---
         // const gridColor = 0xffffff; // Removed unused
@@ -225,8 +252,42 @@ export class SceneController {
         this.updateScreenDimensions();
     }
 
+    public getModelType(): 'vrm' | 'pmx' | null {
+        return this.modelType;
+    }
+
+    // --- Clear existing model ---
+    private clearCurrentModel() {
+        if (this.currentVrm) {
+            this.scene.remove(this.currentVrm.scene);
+            VRMUtils.deepDispose(this.currentVrm.scene);
+            this.currentVrm = undefined;
+        }
+        if (this.currentPmxMesh) {
+            this.scene.remove(this.currentPmxMesh);
+            this.currentPmxMesh.geometry.dispose();
+            if (Array.isArray(this.currentPmxMesh.material)) {
+                this.currentPmxMesh.material.forEach(m => m.dispose());
+            } else {
+                this.currentPmxMesh.material.dispose();
+            }
+            this.currentPmxMesh = null;
+        }
+        if (this.mmdHelper) {
+            // Reset helper
+            this.mmdHelper = new MMDAnimationHelper({ afterglow: 2.0 });
+        }
+        if (this.animationMixer) {
+            this.animationMixer.stopAllAction();
+            this.animationMixer = undefined;
+        }
+        this.modelType = null;
+    }
+
     // --- VRM Loader & Animation ---
     public async loadVRM(url: string) {
+        this.clearCurrentModel();
+
         const loader = new GLTFLoader();
         loader.register((parser) => {
             return new VRMLoaderPlugin(parser);
@@ -237,12 +298,8 @@ export class SceneController {
             (gltf) => {
                 const vrm = gltf.userData.vrm;
 
-                if (this.currentVrm) {
-                    this.scene.remove(this.currentVrm.scene);
-                    VRMUtils.deepDispose(this.currentVrm.scene);
-                }
-
                 this.currentVrm = vrm;
+                this.modelType = 'vrm';
                 this.scene.add(vrm.scene);
 
                 // Setup initial position
@@ -263,6 +320,93 @@ export class SceneController {
             },
             undefined,
             (error) => console.error(error)
+        );
+    }
+
+    // --- PMX Loader ---
+    public async loadPMX(url: string, vmdUrl?: string) {
+        this.clearCurrentModel();
+
+        if (!this.mmdLoader) {
+            this.mmdLoader = new MMDLoader();
+        }
+        if (!this.mmdHelper) {
+            this.mmdHelper = new MMDAnimationHelper({ afterglow: 2.0 });
+        }
+
+        this.mmdLoader.load(
+            url,
+            (mesh: any) => {
+                this.currentPmxMesh = mesh;
+                this.modelType = 'pmx';
+
+                // Setup initial position and scale
+                mesh.rotation.y = Math.PI; // Face forward
+                mesh.position.set(0, this.config.avatarY, this.config.avatarZ);
+                mesh.scale.setScalar(this.config.avatarScale * 0.1); // PMX models are usually larger
+
+                // Disable frustum culling
+                mesh.frustumCulled = false;
+
+                this.scene.add(mesh);
+
+                // Register mesh with helper (required for animation)
+                this.mmdHelper.add(mesh, {
+                    animation: null,
+                    physics: true
+                });
+
+                console.log("PMX Loaded successfully");
+
+                // Load VMD if provided
+                if (vmdUrl) {
+                    this.loadVMDForPMX(vmdUrl);
+                }
+            },
+            (xhr: any) => {
+                console.log(`PMX Loading: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+            },
+            (error: any) => {
+                console.error("Error loading PMX:", error);
+            }
+        );
+    }
+
+    // --- Load VMD for PMX model ---
+    public loadVMDForPMX(url: string) {
+        if (!this.currentPmxMesh) {
+            console.warn("Load a PMX model first!");
+            alert("先にPMXモデルを読み込んでください");
+            return;
+        }
+
+        if (!this.mmdLoader) {
+            this.mmdLoader = new MMDLoader();
+        }
+        if (!this.mmdHelper) {
+            this.mmdHelper = new MMDAnimationHelper({ afterglow: 2.0 });
+        }
+
+        this.mmdLoader.loadAnimation(
+            url,
+            this.currentPmxMesh,
+            (clip: any) => {
+                // Remove any existing animation
+                this.mmdHelper.remove(this.currentPmxMesh);
+
+                this.mmdHelper.add(this.currentPmxMesh, {
+                    animation: clip,
+                    physics: true
+                });
+
+                console.log("VMD animation loaded for PMX");
+            },
+            (xhr: any) => {
+                console.log(`VMD Loading: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+            },
+            (error: any) => {
+                console.error("Error loading VMD:", error);
+            }
         );
     }
 
@@ -483,6 +627,30 @@ export class SceneController {
     }
 
     public updateAvatar(delta: number) {
+        // Update PMX model
+        if (this.modelType === 'pmx' && this.currentPmxMesh) {
+            const s = this.config.avatarScale * 0.1; // PMX scale factor
+            this.currentPmxMesh.scale.set(
+                s * this.config.avatarScaleX,
+                s * this.config.avatarScaleY,
+                s * this.config.avatarScaleZ
+            );
+            this.currentPmxMesh.position.y = this.config.avatarY;
+            this.currentPmxMesh.position.z = this.config.avatarZ;
+
+            // Apply rotation (degrees to radians)
+            this.currentPmxMesh.rotation.x = THREE.MathUtils.degToRad(this.config.avatarRotX);
+            this.currentPmxMesh.rotation.y = THREE.MathUtils.degToRad(this.config.avatarRotY);
+            this.currentPmxMesh.rotation.z = THREE.MathUtils.degToRad(this.config.avatarRotZ);
+
+            // Update MMD helper for physics and animation
+            if (this.mmdHelper) {
+                this.mmdHelper.update(delta);
+            }
+            return;
+        }
+
+        // Update VRM model
         if (!this.currentVrm) return;
 
         // Apply Base Transform (Scale & Position) - ALWAYS run this
@@ -494,6 +662,11 @@ export class SceneController {
         );
         this.currentVrm.scene.position.y = this.config.avatarY;
         this.currentVrm.scene.position.z = this.config.avatarZ;
+
+        // Apply rotation (degrees to radians)
+        this.currentVrm.scene.rotation.x = THREE.MathUtils.degToRad(this.config.avatarRotX);
+        this.currentVrm.scene.rotation.y = THREE.MathUtils.degToRad(this.config.avatarRotY);
+        this.currentVrm.scene.rotation.z = THREE.MathUtils.degToRad(this.config.avatarRotZ);
 
         // Update Mixer (VMD)
         if (this.animationMixer) {
@@ -683,8 +856,30 @@ export class SceneController {
         }
     }
 
-    // Config needs youtubeMotionFactor? 
-    // Let's assume we use a hardcoded logic or use a new config prop.
-    // Ideally we add 'youtubeMotionInvert' to config.
+    public toggleYoutube(enabled: boolean) {
+        this.config.youtubeEnabled = enabled;
+
+        if (enabled) {
+            // Show YouTube, hide back wall
+            if (this.backWallMesh) {
+                this.backWallMesh.visible = false;
+            }
+            this.updateYoutubeVideo(this.config.youtubeId);
+        } else {
+            // Hide YouTube, show back wall
+            this.cssScene.clear();
+            this.youtubeObject = null;
+            if (this.backWallMesh) {
+                this.backWallMesh.visible = true;
+            }
+        }
+    }
+
+    public updateBackWallColor(color: string) {
+        this.config.backWallColor = color;
+        if (this.backWallMat) {
+            this.backWallMat.color.set(color);
+        }
+    }
 
 }

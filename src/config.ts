@@ -23,6 +23,9 @@ export interface AppConfig {
     avatarScaleZ: number;
     avatarY: number;
     avatarZ: number;
+    avatarRotX: number;
+    avatarRotY: number;
+    avatarRotZ: number;
     showDepthObjects: boolean;
     autoDance: boolean;
 
@@ -48,6 +51,7 @@ export interface AppConfig {
     vmdMirrorZ: boolean;
 
     // YouTube
+    youtubeEnabled: boolean;
     youtubeId: string;
     youtubeMirror: boolean;
     youtubeMotionInvert: boolean;
@@ -55,6 +59,7 @@ export interface AppConfig {
     youtubeY: number;
     youtubeZ: number;
     youtubeScale: number;
+    backWallColor: string;
 
     // Hand Tuning
     handDepthFactor: number;
@@ -102,12 +107,15 @@ export const DEFAULT_CONFIG: AppConfig = {
     debugView: false,
 
     // Avatar Config
-    avatarScale: 12.0,
+    avatarScale: 9.0,
     avatarScaleX: 0.5785,
     avatarScaleY: 1.0,
-    avatarScaleZ: 1.0,
-    avatarY: 0,
+    avatarScaleZ: 0.5785,
+    avatarY: -9.2,
     avatarZ: -0.7,
+    avatarRotX: 0,
+    avatarRotY: 0, // 正面向き（度）
+    avatarRotZ: 0,
     showDepthObjects: true,
     autoDance: false, // Default: Stop procedural dance
 
@@ -137,6 +145,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     vmdMirrorY: false, // Inv Y
     vmdMirrorZ: true, // Inv Z
 
+    youtubeEnabled: true, // YouTube表示の有効/無効
     youtubeId: 'jfKfPfyJRdk', // Default Video
     youtubeMirror: false, // Mirror video horizontally
     youtubeMotionInvert: true, // Invert Parallax Motion for YouTube Only
@@ -144,6 +153,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     youtubeY: -14.6,
     youtubeZ: -100.0,
     youtubeScale: 0.1, // Default Scale
+    backWallColor: '#222222', // 背面の色（YouTube無効時）
 
     // Hand Tuning
     handDepthFactor: 300.0,
