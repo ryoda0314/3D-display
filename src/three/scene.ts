@@ -5,7 +5,7 @@ import { CSS3DRenderer, CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRe
 import { MMDLoader } from 'three/examples/jsm/loaders/MMDLoader.js';
 // @ts-ignore - MMDAnimationHelper has no type declaration
 import { MMDAnimationHelper } from 'three/examples/jsm/animation/MMDAnimationHelper.js';
-import { DEFAULT_CONFIG, type AppConfig } from '../config';
+import { getDefaultConfig, type AppConfig } from '../config';
 
 import { VRM, VRMLoaderPlugin, VRMUtils, VRMHumanBoneName } from '@pixiv/three-vrm';
 
@@ -49,8 +49,8 @@ export class SceneController {
     private targetPos = new THREE.Vector3(0, 0, 60);
     // private currentPos = new THREE.Vector3(0, 0, 5);
 
-    // Configuration for Debugging
-    public config: AppConfig = { ...DEFAULT_CONFIG };
+    // Configuration for Debugging (auto-detect PC or Mobile)
+    public config: AppConfig = getDefaultConfig();
 
     private screenWidth = 0; // calculated on resize
 

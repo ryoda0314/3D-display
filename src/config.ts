@@ -74,39 +74,25 @@ export interface AppConfig {
     lastHandZ: number;
 }
 
-export const DEFAULT_CONFIG: AppConfig = {
-    // Physical units reference: Let's assume 1 unit = 1 cm for intuition.
-    // A typical laptop/monitor is ~20-30cm tall.
+// PC用デフォルト設定
+export const PC_DEFAULT_CONFIG: AppConfig = {
     screenHeight: 20.0,
-
-    // Webcam constraints usually mean we need higher sensitivity to map small real movements 
-    // to screen-edge travel.
-    // Sensitivity split for 4 quadrants
     sensitivityX_Left: 1.691377,
     sensitivityX_Right: 1.652277,
     sensitivityY_Top: 1.943930,
     sensitivityY_Bottom: 1.2780,
-
-    // Typical viewing distance ~50-60cm.
-    // If screenHeight is 20, baseZ should be around 50-60.
     baseZ: 70.8,
-
-    zSensitivity: 0.8, // Needs clearer depth changes
+    zSensitivity: 0.8,
     aspectRatio: 1.0,
-
-    // Axis inversion flags - frequently needed for mirror/non-mirror setups
     invertX: false,
     invertY: false,
     invertZ: false,
-
-    // Calibration offsets (Raw input space)
     offsetX: 0.0,
     offsetY: 0.0,
-
-    lookAtCenter: false, // Default OFF to ensure rectangular front
+    lookAtCenter: false,
     debugView: false,
 
-    // Avatar Config
+    // Avatar Config - PC
     avatarScale: 9.0,
     avatarScaleX: 0.5785,
     avatarScaleY: 1.0,
@@ -114,10 +100,10 @@ export const DEFAULT_CONFIG: AppConfig = {
     avatarY: -9.2,
     avatarZ: -0.7,
     avatarRotX: 0,
-    avatarRotY: 0, // 正面向き（度）
+    avatarRotY: 0,
     avatarRotZ: 0,
     showDepthObjects: true,
-    autoDance: false, // Default: Stop procedural dance
+    autoDance: false,
 
     // Wall Colors
     sideWallColor: '#888888',
@@ -126,34 +112,29 @@ export const DEFAULT_CONFIG: AppConfig = {
     // VMD Retargeting Config
     vrmInvertX: true,
     vrmInvertY: true,
-    vrmInvertZ: false, // Usually Z doesn't need inversion if X/Y are flipped for Quaternions? Or maybe it does. Let's try standard (-x, -y, z, w).
-
+    vrmInvertZ: false,
     vmdHipScale: 0.1,
-    vmdHipHeightOffset: 0.0, // Adjust root height
-    vmdArmAposeOffset: 0.0,  // Degree offset for A-pose correction (Shoulders)
+    vmdHipHeightOffset: 0.0,
+    vmdArmAposeOffset: 0.0,
     vmdBoneRotX: 0.0,
     vmdBoneRotY: 0.0,
     vmdBoneRotZ: 0.0,
     vmdPlaybackSpeed: 1.0,
     vmdLoop: true,
+    vmdAxisMap: 'XYZ',
+    vmdMirrorX: true,
+    vmdMirrorY: false,
+    vmdMirrorZ: true,
 
-    // Axis Mapping (Permutation)
-    vmdAxisMap: 'XYZ', // Default order
-
-    // Mirroring / Planes
-    vmdMirrorX: true, // Left/Right Swap + Inv X
-    vmdMirrorY: false, // Inv Y
-    vmdMirrorZ: true, // Inv Z
-
-    youtubeEnabled: true, // YouTube表示の有効/無効
-    youtubeId: 'jfKfPfyJRdk', // Default Video
-    youtubeMirror: false, // Mirror video horizontally
-    youtubeMotionInvert: true, // Invert Parallax Motion for YouTube Only
+    youtubeEnabled: false,
+    youtubeId: 'jfKfPfyJRdk',
+    youtubeMirror: true,
+    youtubeMotionInvert: true,
     youtubeX: 0.0,
     youtubeY: -14.6,
     youtubeZ: -100.0,
-    youtubeScale: 0.1, // Default Scale
-    backWallColor: '#222222', // 背面の色（YouTube無効時）
+    youtubeScale: 0.1,
+    backWallColor: '#222222',
 
     // Hand Tuning
     handDepthFactor: 300.0,
@@ -167,3 +148,87 @@ export const DEFAULT_CONFIG: AppConfig = {
     lastHandSize: 0,
     lastHandZ: 0
 };
+
+// スマホ用デフォルト設定
+export const MOBILE_DEFAULT_CONFIG: AppConfig = {
+    screenHeight: 20.0,  // スマホは小さめ
+    sensitivityX_Left: 1.5574,
+    sensitivityX_Right: 1.5574,
+    sensitivityY_Top: 1.7548,
+    sensitivityY_Bottom: 2.6053,
+    baseZ: 50.0,  // スマホは近い距離
+    zSensitivity: 0.8,
+    aspectRatio: 1.0,
+    invertX: false,
+    invertY: false,
+    invertZ: false,
+    offsetX: 0.0,
+    offsetY: 0.0,
+    lookAtCenter: false,
+    debugView: false,
+
+    // Avatar Config - Mobile (縦画面向け調整)
+    avatarScale: 9.0,
+    avatarScaleX: 0.5785,
+    avatarScaleY: 1.0,
+    avatarScaleZ: 0.5785,
+    avatarY: -9.2,
+    avatarZ: 0.04,
+    avatarRotX: 0,
+    avatarRotY: 0,
+    avatarRotZ: 0,
+    showDepthObjects: true,
+    autoDance: false,
+
+    // Wall Colors
+    sideWallColor: '#ebade3ff',
+    topWallColor: '#f480c4ff',
+
+    // VMD Retargeting Config
+    vrmInvertX: true,
+    vrmInvertY: true,
+    vrmInvertZ: false,
+    vmdHipScale: 0.1,
+    vmdHipHeightOffset: 0.0,
+    vmdArmAposeOffset: 0.0,
+    vmdBoneRotX: 0.0,
+    vmdBoneRotY: 0.0,
+    vmdBoneRotZ: 0.0,
+    vmdPlaybackSpeed: 1.0,
+    vmdLoop: true,
+    vmdAxisMap: 'XYZ',
+    vmdMirrorX: true,
+    vmdMirrorY: false,
+    vmdMirrorZ: true,
+
+    youtubeEnabled: false,
+    youtubeId: 'jfKfPfyJRdk',
+    youtubeMirror: true,
+    youtubeMotionInvert: true,
+    youtubeX: 0.0,
+    youtubeY: -10.0,  // スマホ用位置調整
+    youtubeZ: -80.0,
+    youtubeScale: 0.08,
+    backWallColor: '#fbd8fdff',
+
+    // Hand Tuning
+    handDepthFactor: 300.0,
+    handBaseSize: 0.05,
+    handZOffset: 0.0,
+    handInvertX: false,
+    handInvertY: false,
+    handInvertZ: false,
+
+    // Debug Readouts
+    lastHandSize: 0,
+    lastHandZ: 0
+};
+
+// デバイスに応じて初期設定を取得
+export function getDefaultConfig(): AppConfig {
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    return isMobile ? { ...MOBILE_DEFAULT_CONFIG } : { ...PC_DEFAULT_CONFIG };
+}
+
+// 後方互換性のためDEFAULT_CONFIGはPC版を維持
+export const DEFAULT_CONFIG = PC_DEFAULT_CONFIG;

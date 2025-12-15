@@ -17,7 +17,7 @@ const PRESET_MODELS: { [key: string]: string } = {
 // プリセットダンス一覧 (public/dances/ 内のファイル)
 const PRESET_DANCES: { [key: string]: string } = {
   'なし': '',
-  'ダンス': '/dances/dance.vmd',
+  '美少女無罪♡パイレーツ': '/dances/美少女無罪♡パイレーツモーション.vmd',
 };
 
 // Helper function to determine model type from file extension
