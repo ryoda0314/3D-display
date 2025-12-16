@@ -45,6 +45,7 @@ export interface AppConfig {
     vmdBoneRotZ: number;
     vmdPlaybackSpeed: number;
     vmdLoop: boolean;
+    vmdStartDelay: number; // ダンス開始遅延（秒）
     vmdAxisMap: string;
     vmdMirrorX: boolean;
     vmdMirrorY: boolean;
@@ -122,6 +123,7 @@ export const PC_DEFAULT_CONFIG: AppConfig = {
     vmdBoneRotZ: 0.0,
     vmdPlaybackSpeed: 1.0,
     vmdLoop: true,
+    vmdStartDelay: 1.5, // ダンス開始遅延（秒）
     vmdAxisMap: 'XYZ',
     vmdMirrorX: true,
     vmdMirrorY: false,
@@ -198,6 +200,7 @@ export const MOBILE_DEFAULT_CONFIG: AppConfig = {
     vmdBoneRotZ: 0.0,
     vmdPlaybackSpeed: 1.0,
     vmdLoop: true,
+    vmdStartDelay: 1.5, // ダンス開始遅延（秒）
     vmdAxisMap: 'XYZ',
     vmdMirrorX: true,
     vmdMirrorY: false,

@@ -146,20 +146,35 @@ document.addEventListener('DOMContentLoaded', async () => {
   function loadDance(url: string, youtubeId?: string) {
     const modelType = scene.getModelType();
     console.log("Loading VMD for model type:", modelType);
-    if (modelType === 'pmx') {
-      scene.loadVMDForPMX(url);
-    } else if (modelType === 'vrm') {
-      scene.loadVMD(url);
-    } else {
+
+    if (!modelType) {
       alert("先にモデルを読み込んでください");
       return;
     }
+
+    // Function to actually start the dance
+    const startDance = () => {
+      if (modelType === 'pmx') {
+        scene.loadVMDForPMX(url);
+      } else if (modelType === 'vrm') {
+        scene.loadVMD(url);
+      }
+    };
 
     // YouTube連動: ダンスにYouTube IDが設定されていれば自動再生
     if (youtubeId) {
       scene.config.youtubeId = youtubeId;
       scene.toggleYoutube(true);
       updateControllers();
+
+      // Wait configured delay after YouTube starts, then start dance
+      const delayMs = scene.config.vmdStartDelay * 1000;
+      setTimeout(() => {
+        startDance();
+      }, delayMs);
+    } else {
+      // No YouTube, start dance immediately
+      startDance();
     }
   }
 
@@ -183,9 +198,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
       };
       input.click();
+    },
+    replay: () => {
+      // 現在のプリセットを再読み込み
+      const currentPreset = PRESET_DANCES[danceState.selected];
+      if (currentPreset && currentPreset.vmd) {
+        // YouTubeとダンスを同時に再読み込み
+        if (currentPreset.youtube) {
+          scene.config.youtubeId = currentPreset.youtube;
+          scene.toggleYoutube(true);
+        }
+        // YouTubeリセット後に遅延してダンスを開始
+        const delayMs = scene.config.vmdStartDelay * 1000;
+        setTimeout(() => {
+          const modelType = scene.getModelType();
+          if (modelType === 'pmx') {
+            scene.loadVMDForPMX(currentPreset.vmd);
+          } else if (modelType === 'vrm') {
+            scene.loadVMD(currentPreset.vmd);
+          }
+        }, delayMs);
+      } else {
+        alert("プリセットダンスを選択してください");
+      }
     }
   };
   danceFolder.add(danceActions, 'loadFromFile').name('ファイルから読み込み...');
+  danceFolder.add(danceActions, 'replay').name('🔄 再生しなおし');
 
   // ===== 3. キャリブレーション (第一階層) =====
   const calibFolder = gui.addFolder('キャリブレーション');
@@ -270,6 +309,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   vmdSettings.add(scene.config, 'vmdPlaybackSpeed', 0.1, 3.0).name('再生速度').onChange(() => scene.reapplyVMD());
   vmdSettings.add(scene.config, 'vmdLoop').name('ループ再生').onChange(() => scene.reapplyVMD());
+  vmdSettings.add(scene.config, 'vmdStartDelay', 0, 10).name('開始遅延 (秒)');
 
   try {
     avatarFolder.add(scene.config, 'avatarScale', 1.0, 50.0).name('全体サイズ (Master)').onChange(() => scene.forceUpdateDims()); // Just in case
@@ -348,10 +388,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Background color control might be redundant if we use CSS YouTube, but okay to keep if no video.
   sceneFolder.addColor({ color: '#000000' }, 'color').name('背景色').onChange((c: any) => document.body.style.backgroundColor = c);
   const sensFolder = gui.addFolder('感度・軸設定');
-  sensFolder.add(scene.config, 'sensitivityX_Left', 0.1, 3.0).name('感度 X (左)');
-  sensFolder.add(scene.config, 'sensitivityX_Right', 0.1, 3.0).name('感度 X (右)');
-  sensFolder.add(scene.config, 'sensitivityY_Top', 0.1, 3.0).name('感度 Y (上)');
-  sensFolder.add(scene.config, 'sensitivityY_Bottom', 0.1, 3.0).name('感度 Y (下)');
+  sensFolder.add(scene.config, 'sensitivityX_Left', 0.1, 10.0).name('感度 X (左)');
+  sensFolder.add(scene.config, 'sensitivityX_Right', 0.1, 10.0).name('感度 X (右)');
+  sensFolder.add(scene.config, 'sensitivityY_Top', 0.1, 10.0).name('感度 Y (上)');
+  sensFolder.add(scene.config, 'sensitivityY_Bottom', 0.1, 10.0).name('感度 Y (下)');
 
   sensFolder.add(scene.config, 'invertX').name('横反転 (左右)');
   sensFolder.add(scene.config, 'invertY').name('縦反転 (上下)');
