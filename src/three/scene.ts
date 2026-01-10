@@ -285,91 +285,104 @@ export class SceneController {
     }
 
     // --- VRM Loader & Animation ---
-    public async loadVRM(url: string) {
-        this.clearCurrentModel();
+    public loadVRM(url: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.clearCurrentModel();
 
-        const loader = new GLTFLoader();
-        loader.register((parser) => {
-            return new VRMLoaderPlugin(parser);
+            const loader = new GLTFLoader();
+            loader.register((parser) => {
+                return new VRMLoaderPlugin(parser);
+            });
+
+            loader.load(
+                url,
+                (gltf) => {
+                    const vrm = gltf.userData.vrm;
+
+                    this.currentVrm = vrm;
+                    this.modelType = 'vrm';
+                    this.scene.add(vrm.scene);
+
+                    // Setup initial position
+                    vrm.scene.rotation.y = Math.PI; // Face forward
+                    vrm.scene.position.set(0, this.config.avatarY, this.config.avatarZ);
+
+                    // Adjust scale if needed (some models are huge)
+                    vrm.scene.scale.setScalar(this.config.avatarScale);
+
+                    // Fix: Disable Frustum Culling to prevent disappearing when animated off-screen
+                    vrm.scene.traverse((obj: any) => {
+                        if (obj.isMesh) {
+                            obj.frustumCulled = false;
+                        }
+                    });
+
+                    console.log("VRM Loaded successfully");
+                    resolve();
+                },
+                undefined,
+                (error) => {
+                    console.error(error);
+                    reject(error);
+                }
+            );
         });
-
-        loader.load(
-            url,
-            (gltf) => {
-                const vrm = gltf.userData.vrm;
-
-                this.currentVrm = vrm;
-                this.modelType = 'vrm';
-                this.scene.add(vrm.scene);
-
-                // Setup initial position
-                vrm.scene.rotation.y = Math.PI; // Face forward
-                vrm.scene.position.set(0, this.config.avatarY, this.config.avatarZ);
-
-                // Adjust scale if needed (some models are huge)
-                vrm.scene.scale.setScalar(this.config.avatarScale);
-
-                // Fix: Disable Frustum Culling to prevent disappearing when animated off-screen
-                vrm.scene.traverse((obj: any) => {
-                    if (obj.isMesh) {
-                        obj.frustumCulled = false;
-                    }
-                });
-
-                console.log("VRM Loaded successfully");
-            },
-            undefined,
-            (error) => console.error(error)
-        );
     }
 
-    // --- PMX Loader ---
-    public async loadPMX(url: string, vmdUrl?: string) {
-        this.clearCurrentModel();
+    public loadPMX(url: string): Promise<void> {
+        return new Promise((resolve, reject) => {
+            this.clearCurrentModel();
 
-        if (!this.mmdLoader) {
-            this.mmdLoader = new MMDLoader();
-        }
-        if (!this.mmdHelper) {
-            this.mmdHelper = new MMDAnimationHelper({ afterglow: 2.0 });
-        }
-
-        this.mmdLoader.load(
-            url,
-            (mesh: any) => {
-                this.currentPmxMesh = mesh;
-                this.modelType = 'pmx';
-
-                // Setup initial position and scale
-                mesh.rotation.y = Math.PI; // Face forward
-                mesh.position.set(0, this.config.avatarY, this.config.avatarZ);
-                mesh.scale.setScalar(this.config.avatarScale * 0.1); // PMX models are usually larger
-
-                // Disable frustum culling
-                mesh.frustumCulled = false;
-
-                this.scene.add(mesh);
-
-                // Register mesh with helper (required for animation)
-                this.mmdHelper.add(mesh, {
-                    animation: null,
-                    physics: true
-                });
-
-                console.log("PMX Loaded successfully");
-
-                // Load VMD if provided
-                if (vmdUrl) {
-                    this.loadVMDForPMX(vmdUrl);
-                }
-            },
-            (xhr: any) => {
-                console.log(`PMX Loading: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
-            },
-            (error: any) => {
-                console.error("Error loading PMX:", error);
+            if (!this.mmdLoader) {
+                this.mmdLoader = new MMDLoader();
             }
-        );
+            if (!this.mmdHelper) {
+                this.mmdHelper = new MMDAnimationHelper({ afterglow: 2.0 });
+            }
+
+            this.mmdLoader.load(
+                url,
+                (mesh: any) => {
+                    this.currentPmxMesh = mesh;
+                    this.modelType = 'pmx';
+
+                    // Hide mesh until fully loaded (including textures)
+                    mesh.visible = false;
+
+                    // Setup initial position and scale
+                    mesh.rotation.y = Math.PI; // Face forward
+                    mesh.position.set(0, this.config.avatarY, this.config.avatarZ);
+                    mesh.scale.setScalar(this.config.avatarScale * 0.1); // PMX models are usually larger
+
+                    // Disable frustum culling
+                    mesh.frustumCulled = false;
+
+                    this.scene.add(mesh);
+
+                    // Register mesh with helper (required for animation)
+                    // Don't pass animation option yet - it will be added when VMD is loaded
+                    // physics: false because ammo.js is not loaded
+                    this.mmdHelper.add(mesh, {
+                        physics: false
+                    });
+
+                    console.log("PMX Loaded successfully");
+
+                    // Wait a few frames for textures to be applied before showing
+                    setTimeout(() => {
+                        mesh.visible = true;
+                        resolve();
+                    }, 200);
+                },
+                (xhr: any) => {
+                    console.log(`PMX Loading: ${(xhr.loaded / xhr.total * 100).toFixed(0)}%`);
+                },
+                (error: any) => {
+                    console.error("Error loading PMX:", error);
+                    reject(error);
+                }
+            );
+        });
     }
 
     // --- Load VMD for PMX model ---
@@ -396,7 +409,7 @@ export class SceneController {
 
                 this.mmdHelper.add(this.currentPmxMesh, {
                     animation: clip,
-                    physics: true
+                    physics: false
                 });
 
                 console.log("VMD animation loaded for PMX");
@@ -871,18 +884,22 @@ export class SceneController {
         // Initialize YouTube IFrame API
         const self = this;
 
-        // Load YouTube API if not already loaded
-        if (!(window as any).YT) {
-            const tag = document.createElement('script');
-            tag.src = 'https://www.youtube.com/iframe_api';
-            document.head.appendChild(tag);
+        // Wait a bit for DOM to be rendered before creating player
+        setTimeout(() => {
+            console.log("Creating YouTube player for:", playerId);
+            // Load YouTube API if not already loaded
+            if (!(window as any).YT || !(window as any).YT.Player) {
+                const tag = document.createElement('script');
+                tag.src = 'https://www.youtube.com/iframe_api';
+                document.head.appendChild(tag);
 
-            (window as any).onYouTubeIframeAPIReady = () => {
+                (window as any).onYouTubeIframeAPIReady = () => {
+                    self.createYoutubePlayer(playerId, id);
+                };
+            } else {
                 self.createYoutubePlayer(playerId, id);
-            };
-        } else {
-            this.createYoutubePlayer(playerId, id);
-        }
+            }
+        }, 100);
     }
 
     private createYoutubePlayer(elementId: string, videoId: string) {
@@ -929,6 +946,15 @@ export class SceneController {
             this.updateYoutubeVideo(this.config.youtubeId);
         } else {
             // Hide YouTube, show back wall
+            // Destroy existing player first
+            if (this.youtubePlayer) {
+                try {
+                    this.youtubePlayer.destroy();
+                } catch (e) {
+                    console.warn("Failed to destroy YouTube player:", e);
+                }
+                this.youtubePlayer = null;
+            }
             this.cssScene.clear();
             this.youtubeObject = null;
             if (this.backWallMesh) {

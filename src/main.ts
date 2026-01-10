@@ -45,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 1.5 Init Debug GUI
   const gui = new GUI({ title: '設定メニュー' });
+  gui.close(); // Start closed by default
   const debugState = { status: 'Initializing...' };
 
   // Save defaults
@@ -94,7 +95,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cursor: pointer;
     z-index: 9999;
     box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    display: none;
+    display: block;
   `;
   fullscreenBtn.onclick = toggleFullscreen;
   document.body.appendChild(fullscreenBtn);
@@ -109,6 +110,98 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.addEventListener('fullscreenchange', () => {
     fullscreenBtn.textContent = document.fullscreenElement ? '✕' : '⛶';
   });
+
+  // ===== 再生ボタン (左上) =====
+  const playBtn = document.createElement('button');
+  playBtn.textContent = '▶';
+  playBtn.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 60px;
+    height: 60px;
+    font-size: 28px;
+    border: none;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff6b9d, #c44569);
+    color: white;
+    cursor: pointer;
+    z-index: 9999;
+    box-shadow: 0 4px 15px rgba(196, 69, 105, 0.4);
+    transition: transform 0.2s, box-shadow 0.2s;
+  `;
+  playBtn.onmouseover = () => {
+    playBtn.style.transform = 'scale(1.1)';
+    playBtn.style.boxShadow = '0 6px 20px rgba(196, 69, 105, 0.6)';
+  };
+  playBtn.onmouseout = () => {
+    playBtn.style.transform = 'scale(1)';
+    playBtn.style.boxShadow = '0 4px 15px rgba(196, 69, 105, 0.4)';
+  };
+
+  // ===== ローディングオーバーレイ =====
+  const loadingOverlay = document.createElement('div');
+  loadingOverlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+    font-size: 24px;
+    color: white;
+    font-family: sans-serif;
+  `;
+  loadingOverlay.innerHTML = '<div style="text-align: center;"><div style="font-size: 48px; margin-bottom: 20px;">⏳</div><div>読み込み中...</div></div>';
+  document.body.appendChild(loadingOverlay);
+
+  playBtn.onclick = async () => {
+    playBtn.textContent = '⏳';
+    playBtn.style.pointerEvents = 'none';
+    loadingOverlay.style.display = 'flex'; // Show loading
+    try {
+      // 1. Load (or reload) Hosho Marine model
+      const modelPath = PRESET_MODELS['宝鐘マリン'];
+      await scene.loadPMX(modelPath);
+
+      // 2. Start dance (with YouTube sync)
+      const dancePreset = PRESET_DANCES['美少女無罪♡パイレーツ'];
+      console.log("Dance preset:", dancePreset);
+      if (dancePreset && dancePreset.youtube) {
+        scene.config.youtubeId = dancePreset.youtube;
+        // Force restart YouTube from beginning
+        scene.toggleYoutube(false); // Turn off first
+        setTimeout(() => {
+          scene.toggleYoutube(true);  // Then turn on to restart
+          updateControllers();
+
+          // Wait for configured delay, then start dance
+          const delayMs = scene.config.vmdStartDelay * 1000;
+          console.log(`Starting dance in ${delayMs}ms...`);
+          setTimeout(() => {
+            console.log("Loading VMD now:", dancePreset.vmd);
+            scene.loadVMDForPMX(dancePreset.vmd);
+          }, delayMs);
+        }, 100);
+      } else if (dancePreset) {
+        console.log("Loading VMD immediately (no YouTube):", dancePreset.vmd);
+        scene.loadVMDForPMX(dancePreset.vmd);
+      }
+
+      playBtn.textContent = '▶';
+    } catch (e) {
+      console.error("Play button error:", e);
+      playBtn.textContent = '❌';
+    } finally {
+      playBtn.style.pointerEvents = 'auto';
+      loadingOverlay.style.display = 'none'; // Hide loading
+    }
+  };
+  document.body.appendChild(playBtn);
 
   // ===== 1. モデル選択 (第一階層) =====
   const modelFolder = gui.addFolder('モデル選択');
@@ -388,6 +481,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Background color control might be redundant if we use CSS YouTube, but okay to keep if no video.
   sceneFolder.addColor({ color: '#000000' }, 'color').name('背景色').onChange((c: any) => document.body.style.backgroundColor = c);
   const sensFolder = gui.addFolder('感度・軸設定');
+  sensFolder.add(scene.config, 'offsetX', -1.0, 1.0).name('オフセット X (中心補正)');
+  sensFolder.add(scene.config, 'offsetY', -1.0, 1.0).name('オフセット Y (中心補正)');
   sensFolder.add(scene.config, 'sensitivityX_Left', 0.1, 10.0).name('感度 X (左)');
   sensFolder.add(scene.config, 'sensitivityX_Right', 0.1, 10.0).name('感度 X (右)');
   sensFolder.add(scene.config, 'sensitivityY_Top', 0.1, 10.0).name('感度 Y (上)');
